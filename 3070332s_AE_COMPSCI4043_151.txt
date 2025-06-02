@@ -1,0 +1,65 @@
+; Register use table
+; R1 = i (Loop iteration)
+; R2 = arraySize (No. of elements in x)
+; R3 = overflow (0 if no overflow and 1 if overflow occurred calculating negsum)
+; R4 = 1 (This is used for incrementing the loop and incrementing pzcount and oddcount counters)
+; R5 = x[i] (current element of array x)
+; R6 = Boolean (i < array size)
+; R7 = Result of x[i] comparison instructions, e.g. x[i] > 0.
+; R8 = 1 if current element positive & odd, otherwise 0.
+; R11 = Boolean flag for detecting if negsum < 0, if not will take value 1.
+; R12 = current values of negsum and then stores final value in memory
+; R13 = current values of pzcount and then stores final value in memory
+; R14 = current values of oddcount and then stores final value in memory
+; Beginning
+                 LOAD   R2,arraySize[R0]      ; Load into R2 the arraySize variable
+                 LEA    R4,1[R0]              ; Load into R4 the value 1, for incemental loops & counters
+Loop		 CMPLT  R6,R1,R2              ; Set R6 = T, if R1 (loop iteration) < R2 (arraySize)
+                 JUMPF  R6,EndAfterloop[R0]   ; Jump to EndAfterloop if R6 = false (i.e. go end if i>= arraySize)
+                 LOAD   R5,x[R1]              ; Load into R5 the x[i] (current array element) 
+		 CMPLT  R7,R5,R0		; Set R7 = T, if R5 (current element) < 0
+		 JUMPF  R7,pzcountCalc[R0]     ; If false, jump to pzcountCalc
+		 JUMPT  R7,NegSumCalc[R0]      ; Otherwise, if true jump to NegSumCalc[R0]
+; If x[i] < 0, then add x[i] to R12 (negsum register)
+NegSumCalc    	 ADD    R12,R12,R5            ; Set R12 (negsum) = R12 (negsum) + R5 (current element)
+                 CMPLT  R11,R12,R0            ; Set R11 = T, if R12 (negsum) > R0 (0).
+                 JUMPT  R11,NextElement[R0]   ; If R11 (negsum < 0 flag) jump to NextElement and increment i for next loop iteration
+		 LEA    R3,1[R0]              ; Else an overflow has occurred, Load into (set) R3 to 1.
+                 JUMP   NextElement[R0]       ; Then jump to NextElement.
+; If x[i] >= 0 update pzcount.                 
+		JUMPT  R7,oddcountCount[R0]   ; If R7 = T, then jump to oddcount
+pzcountCalc      ADD    R13,R13,R4            ; Set R13 (pzcount) = R13 (pzcount) + R4 (1) (i.e. pzcount += 1)
+; If x[i] > 0 (positive) and odd, increment R14 (oddcount register)
+oddcountCount    CMPGT  R7,R5,R0              ; Set R7 = T, if R5 (current element) > 0
+                 JUMPF  R7,NextElement[R0]    ; If R7 = T, jump to NextElement. Because oddcountCount should only calculate positives.
+                 AND    R8,R5,R4              ; Set R8 = 1, if current element is odd
+                 JUMPF  R8,NextElement[R0]    ; If R8 = F, then Jump to next element (i.e. don't add to odd count)
+                 ADD    R14,R14,R4            ; Set R14 = R14 (oddcount) + R4 (1), (i.e. oddcount += 1)
+;Use to increase increment each iteration
+NextElement	 ADD    R1,R1,R4              ; Set R1 (Loop iteration) = Loop iteration + R4 (1), (i.e.i += 1)
+                 JUMP   Loop[R0]    	      ; Jump back to loop for next iteration
+; Store the final results in memory and end the program                
+EndAfterloop     STORE  R3,overflow[R0]       ; Stores the overflow flag
+		 STORE  R12,negsum[R0]        ; Stores the final value for the negsum
+                 STORE  R13,pzcount[R0]       ; Stores the final value for the pzcount
+                 STORE  R14,oddcount[R0]      ; Stores the final value for the oddcount
+                 TRAP   R0,R0,R0              ; Terminate program
+; Static Variables Declared after program 
+x DATA 3 			; Declare variable x as integer array and following DATA elements
+ DATA -6
+ DATA 27
+ DATA 101
+ DATA 50
+ DATA 0
+ DATA -20
+ DATA -21
+ DATA 19
+ DATA 6
+ DATA 4
+ DATA -10 	
+negsum DATA 0 	; Declare variable negsum initialise to 0 
+pzcount DATA 0 	; Declare variable pzcount initialise to 0 
+oddcount DATA 0 ; Declare variable addcount initialise to 0 
+overflow DATA 0 ; Declare variable overflow initialise to 0
+i DATA 0 	; Declare variable i initialise to 0
+arraySize DATA 12 ; Declare variable arraySize initialise to 12
